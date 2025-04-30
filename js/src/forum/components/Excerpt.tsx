@@ -2,6 +2,7 @@ import Component, { ComponentAttrs } from 'flarum/common/Component';
 import Post from 'flarum/common/models/Post';
 import { truncate } from 'flarum/common/utils/string';
 import type Mithril from 'mithril';
+import truncateHtml from '../utils/truncateHtml';
 
 export interface ExcerptAttrs extends ComponentAttrs {
   post: Post;
@@ -23,11 +24,15 @@ export default class Excerpt extends Component<ExcerptAttrs> {
   }
 
   view() {
-    return <div className="Synopsis-excerpt">{m.trust(this.getContent())}</div>;
+    return <div className="Synopsis-excerpt">{this.getContent()}</div>;
   }
 
-  getContent(): string {
-    return this.richExcerpt ? truncate(this.contentRich() ?? '', this.length) : truncate(this.contentPlain() ?? '', this.length);
+  getContent(): Mithril.Vnode | string {
+    if (this.richExcerpt) {
+      return m.trust(truncateHtml(this.contentRich() ?? '', this.length));
+    }
+
+    return truncate(this.contentPlain() ?? '', this.length);
   }
 
   contentRich() {
