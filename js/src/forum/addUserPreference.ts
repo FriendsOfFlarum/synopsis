@@ -1,5 +1,5 @@
 import app from 'flarum/forum/app';
-import { extend } from 'flarum/common/extend';
+import { extend, override } from 'flarum/common/extend';
 import FieldSet from 'flarum/common/components/FieldSet';
 import ItemList from 'flarum/common/utils/ItemList';
 import Switch from 'flarum/common/components/Switch';
@@ -25,7 +25,7 @@ export default function () {
     );
   });
 
-  extend('flarum/forum/components/SettingsPage', 'summariesItems', function () {
+  override('flarum/forum/components/SettingsPage', 'summariesItems', function () {
     const items = new ItemList<Mithril.Children>();
     if (!this.user) return items;
 
