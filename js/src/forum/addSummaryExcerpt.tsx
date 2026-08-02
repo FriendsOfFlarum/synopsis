@@ -47,7 +47,12 @@ export default function addSummaryExcerpt() {
     }
 
     const excerptLength = typeof tag?.excerptLength() === 'number' ? tag?.excerptLength() : app.forum.attribute<number>('synopsis.excerpt_length');
-    const richExcerpt = typeof tag?.richExcerpts() === 'number' ? tag?.richExcerpts() : app.forum.attribute<boolean>('synopsis.rich_excerpts');
+
+    // The tag override is a nullable boolean — null means inherit the global
+    // setting. (Checking `typeof === 'number'` here meant the override never
+    // applied at all.)
+    const tagRich = tag?.richExcerpts();
+    const richExcerpt = typeof tagRich === 'boolean' ? tagRich : Boolean(app.forum.attribute<boolean>('synopsis.rich_excerpts'));
     const onMobile = app.session.user ? app.session.user.preferences()?.showSynopsisExcerptsOnMobile : false;
 
     // A length of zero means we don't want a synopsis for this discussion, so do nothing.
@@ -55,15 +60,20 @@ export default function addSummaryExcerpt() {
       return;
     }
 
-    const excerptPost = richExcerpt
+    // When rich excerpts are in play anywhere, the payload carries the posts
+    // and no attribute — so the post is the source for BOTH flavours here:
+    // rich for tags that want it, contentPlain for tags that opted out.
+    // Otherwise the plain attribute is the only source needed.
+    const inPlay = richExcerptsInPlay();
+    const excerptPost = inPlay
       ? app.forum.attribute<string>('synopsis.excerpt_type') === 'first'
         ? discussion.firstPost()
         : discussion.lastPost()
       : null;
-    const plainExcerpt = richExcerpt ? null : (discussion.attribute('synopsisExcerpt') as string | null);
+    const plainExcerpt = inPlay ? null : (discussion.attribute('synopsisExcerpt') as string | null);
 
     if (excerptPost || plainExcerpt) {
-      const excerpt = <Excerpt post={excerptPost} plain={plainExcerpt} length={excerptLength} richExcerpt={richExcerpt} />;
+      const excerpt = <Excerpt post={excerptPost} plain={plainExcerpt} length={excerptLength} richExcerpt={richExcerpt && Boolean(excerptPost)} />;
 
       items.add('excerpt', excerpt, -100);
       onMobile && items.add('excerptM', excerpt, -100);
