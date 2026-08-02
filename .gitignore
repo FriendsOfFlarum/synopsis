@@ -5,3 +5,4 @@ composer.lock
 *.sublime-workspace
 .jshintrc
 .phpunit.result.cache
+.phpunit.cache
