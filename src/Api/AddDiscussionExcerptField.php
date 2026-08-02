@@ -36,7 +36,7 @@ class AddDiscussionExcerptField
         return [
             Schema\Str::make('synopsisExcerpt')
                 ->nullable()
-                ->visible(fn (Discussion $discussion, Context $context) => ! self::config($context)->rich)
+                ->visible(fn (Discussion $discussion, Context $context) => !self::config($context)->rich)
                 ->get(function (Discussion $discussion, Context $context) {
                     $config = self::config($context);
 
@@ -48,7 +48,7 @@ class AddDiscussionExcerptField
                     EloquentBuffer::add($discussion, $config->relation);
 
                     return function () use ($discussion, $config, $context) {
-                        if (! $discussion->relationLoaded($config->relation)) {
+                        if (!$discussion->relationLoaded($config->relation)) {
                             // Look the relationship up on the discussions
                             // resource itself — $context->collection is the
                             // REQUEST's primary resource, which is a different
@@ -66,7 +66,7 @@ class AddDiscussionExcerptField
 
                         $post = $discussion->getRelation($config->relation);
 
-                        if (! $post instanceof CommentPost || empty($post->parsed_content)) {
+                        if (!$post instanceof CommentPost || empty($post->parsed_content)) {
                             return null;
                         }
 
@@ -100,7 +100,7 @@ class AddDiscussionExcerptField
             ->first();
 
         return (object) [
-            'rich' => (bool) $settings->get('fof-synopsis.rich-excerpts') || (bool) ($tagged->rich ?? false),
+            'rich'     => (bool) $settings->get('fof-synopsis.rich-excerpts') || (bool) ($tagged->rich ?? false),
             'relation' => $settings->get('fof-synopsis.excerpt-type') === 'last' ? 'lastPost' : 'firstPost',
             // Serialize enough for the longest length any tag is configured
             // to display; the frontend truncates to the applicable length.
