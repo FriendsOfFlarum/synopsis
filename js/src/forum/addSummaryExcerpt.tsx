@@ -60,7 +60,7 @@ export default function addSummaryExcerpt() {
         ? discussion.firstPost()
         : discussion.lastPost()
       : null;
-    const plainExcerpt = richExcerpt ? null : (discussion.attribute<string>('synopsisExcerpt') as string | null);
+    const plainExcerpt = richExcerpt ? null : (discussion.attribute('synopsisExcerpt') as string | null);
 
     if (excerptPost || plainExcerpt) {
       const excerpt = <Excerpt post={excerptPost} plain={plainExcerpt} length={excerptLength} richExcerpt={richExcerpt} />;

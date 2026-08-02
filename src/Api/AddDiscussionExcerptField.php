@@ -95,16 +95,17 @@ class AddDiscussionExcerptField
 
         // Rich excerpts (globally or on any tag) render real HTML and keep
         // the full post include; the plain attribute stands down entirely.
-        $tagged = Tag::query()
-            ->selectRaw('max(excerpt_length) as longest, max(rich_excerpts) as rich')
-            ->first();
+        // Aggregated in PHP rather than SQL: the tags table is tiny, and
+        // MAX() over a boolean column is not portable (PostgreSQL rejects
+        // it outright).
+        $tags = Tag::query()->get(['excerpt_length', 'rich_excerpts']);
 
         return (object) [
-            'rich'     => (bool) $settings->get('fof-synopsis.rich-excerpts') || (bool) ($tagged->rich ?? false),
+            'rich'     => (bool) $settings->get('fof-synopsis.rich-excerpts') || $tags->contains(fn (Tag $tag) => (bool) $tag->rich_excerpts),
             'relation' => $settings->get('fof-synopsis.excerpt-type') === 'last' ? 'lastPost' : 'firstPost',
             // Serialize enough for the longest length any tag is configured
             // to display; the frontend truncates to the applicable length.
-            'length' => max((int) $settings->get('fof-synopsis.excerpt_length'), (int) ($tagged->longest ?? 0), 200),
+            'length'   => max((int) $settings->get('fof-synopsis.excerpt_length'), (int) $tags->max('excerpt_length'), 200),
         ];
     }
 }
