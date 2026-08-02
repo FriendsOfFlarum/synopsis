@@ -6,8 +6,20 @@ import ItemList from 'flarum/common/utils/ItemList';
 import type Mithril from 'mithril';
 import Excerpt from './components/Excerpt';
 
+/**
+ * Rich excerpts render real post HTML, which only exists on a fully
+ * serialized post — so they still include the post. Plain excerpts come from
+ * the synopsisExcerpt attribute the backend serializes on each discussion,
+ * with no posts in the payload at all.
+ */
+function richExcerptsInPlay(): boolean {
+  return Boolean(app.forum.attribute<boolean>('synopsis.rich_excerpts')) || app.store.all('tags').some((tag: any) => Boolean(tag.richExcerpts?.()));
+}
+
 export default function addSummaryExcerpt() {
   extend(DiscussionListState.prototype, 'requestParams', function (params) {
+    if (!richExcerptsInPlay()) return;
+
     if (typeof params.include === 'string') {
       params.include = [params.include];
     } else {
@@ -34,7 +46,6 @@ export default function addSummaryExcerpt() {
       tag = tags[tags.length - 1];
     }
 
-    const excerptPost = app.forum.attribute<string>('synopsis.excerpt_type') === 'first' ? discussion.firstPost() : discussion.lastPost();
     const excerptLength = typeof tag?.excerptLength() === 'number' ? tag?.excerptLength() : app.forum.attribute<number>('synopsis.excerpt_length');
     const richExcerpt = typeof tag?.richExcerpts() === 'number' ? tag?.richExcerpts() : app.forum.attribute<boolean>('synopsis.rich_excerpts');
     const onMobile = app.session.user ? app.session.user.preferences()?.showSynopsisExcerptsOnMobile : false;
@@ -44,8 +55,15 @@ export default function addSummaryExcerpt() {
       return;
     }
 
-    if (excerptPost) {
-      const excerpt = <Excerpt post={excerptPost} length={excerptLength} richExcerpt={richExcerpt} />;
+    const excerptPost = richExcerpt
+      ? app.forum.attribute<string>('synopsis.excerpt_type') === 'first'
+        ? discussion.firstPost()
+        : discussion.lastPost()
+      : null;
+    const plainExcerpt = richExcerpt ? null : (discussion.attribute('synopsisExcerpt') as string | null);
+
+    if (excerptPost || plainExcerpt) {
+      const excerpt = <Excerpt post={excerptPost} plain={plainExcerpt} length={excerptLength} richExcerpt={richExcerpt} />;
 
       items.add('excerpt', excerpt, -100);
       onMobile && items.add('excerptM', excerpt, -100);

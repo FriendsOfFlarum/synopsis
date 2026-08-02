@@ -5,13 +5,15 @@ import type Mithril from 'mithril';
 import truncateHtml from '../utils/truncateHtml';
 
 export interface ExcerptAttrs extends ComponentAttrs {
-  post: Post;
+  post: Post | null;
+  plain: string | null;
   length: number;
   richExcerpt: boolean;
 }
 
 export default class Excerpt extends Component<ExcerptAttrs> {
-  post!: Post;
+  post!: Post | null;
+  plain!: string | null;
   length!: number;
   richExcerpt!: boolean;
 
@@ -19,6 +21,7 @@ export default class Excerpt extends Component<ExcerptAttrs> {
     super.oninit(vnode);
 
     this.post = this.attrs.post;
+    this.plain = this.attrs.plain;
     this.length = this.attrs.length;
     this.richExcerpt = this.attrs.richExcerpt;
   }
@@ -36,10 +39,12 @@ export default class Excerpt extends Component<ExcerptAttrs> {
   }
 
   contentRich() {
-    return this.post.contentHtml();
+    return this.post?.contentHtml();
   }
 
   contentPlain() {
-    return this.post.contentPlain();
+    // Plain excerpts are served as a discussion attribute; the post model is
+    // only present in rich mode.
+    return this.plain ?? this.post?.contentPlain();
   }
 }

@@ -47,13 +47,22 @@ return [
         ->fields(Api\AddTagResourceFields::class),
 
     (new Extend\ApiResource(DiscussionResource::class))
+        ->fields(Api\AddDiscussionExcerptField::class)
         ->endpoint(['index', 'update'], function (Endpoint\Index|Endpoint\Update $endpoint) {
             $settings = resolve('flarum.settings');
 
-            if ($settings->get('fof-synopsis.excerpt-type') === 'last') {
-                $endpoint->addDefaultInclude(['lastPost']);
-            } else {
-                $endpoint->addDefaultInclude(['firstPost']);
+            // Rich excerpts render real HTML and genuinely need the rendered
+            // post, so forums that opted in (globally or on any tag) keep the
+            // include. Everyone else gets the synopsisExcerpt attribute:
+            // plain text extracted from the stored XML with no render
+            // pipeline, no per-post policies, and no posts in the payload.
+            $rich = (bool) $settings->get('fof-synopsis.rich-excerpts')
+                || Tag::query()->where('rich_excerpts', true)->exists();
+
+            if ($rich) {
+                $endpoint->addDefaultInclude([
+                    $settings->get('fof-synopsis.excerpt-type') === 'last' ? 'lastPost' : 'firstPost',
+                ]);
             }
 
             return $endpoint;
