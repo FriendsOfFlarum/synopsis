@@ -66,17 +66,36 @@ class AddDiscussionExcerptField
 
                         $post = $discussion->getRelation($config->relation);
 
-                        if (!$post instanceof CommentPost || empty($post->parsed_content)) {
+                        $content = $post instanceof CommentPost ? (string) $post->parsed_content : '';
+
+                        // removeFormatting() parses the value as TextFormatter
+                        // XML, which requires a non-empty <t>/<r> document.
+                        // Content that is not that — a post that is only
+                        // whitespace, or stored blank by another extension —
+                        // makes DOMDocument::loadXML() warn (or throw on newer
+                        // libxml), which a production error handler escalates to
+                        // an exception: an unrendered 500 on the whole
+                        // discussion list. A post with no readable text simply
+                        // has no excerpt, so bail before parsing anything that
+                        // is not a well-formed document.
+                        if (trim($content) === '' || $content[0] !== '<') {
                             return null;
                         }
 
-                        // Plain text straight from the stored XML: no
-                        // formatter render, no extension callbacks, no
-                        // per-post policies — the costs that made including
-                        // the whole post expensive.
-                        $plain = trim(preg_replace('/\s+/', ' ', Utils::removeFormatting($post->parsed_content)) ?? '');
+                        // Plain text straight from the stored XML: no formatter
+                        // render, no extension callbacks, no per-post policies —
+                        // the costs that made including the whole post
+                        // expensive. Still defend against a parse failure on
+                        // malformed stored content.
+                        try {
+                            $stripped = Utils::removeFormatting($content);
+                        } catch (\Throwable $e) {
+                            return null;
+                        }
 
-                        return mb_substr($plain, 0, $config->length);
+                        $plain = trim(preg_replace('/\s+/', ' ', $stripped) ?? '');
+
+                        return $plain === '' ? null : mb_substr($plain, 0, $config->length);
                     };
                 }),
         ];
