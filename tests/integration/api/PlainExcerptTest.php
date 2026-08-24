@@ -190,4 +190,52 @@ class PlainExcerptTest extends TestCase
 
         $this->assertCount(2, $this->includedPosts($body), 'Explicit include must serialize every first post.');
     }
+
+    /**
+     * A first post with no extractable text — an empty parsed body, or one
+     * that is only an image/attachment — must not fatal the discussion list.
+     * `Utils::removeFormatting()` throws a ValueError on empty XML, which
+     * surfaces as an unrendered 500.
+     *
+     * @dataProvider textlessContentProvider
+     */
+    #[Test]
+    #[\PHPUnit\Framework\Attributes\DataProvider('textlessContentProvider')]
+    public function a_textless_first_post_does_not_fatal_the_list(string $label, string $content): void
+    {
+        $this->database()->table('posts')->where('id', 1)->update(['content' => $content]);
+
+        // Mirror production: Flarum's error handler escalates PHP warnings to
+        // exceptions, so a warning from inside removeFormatting() becomes an
+        // unrendered 500 on a live forum even where the test harness would let
+        // it limp through. Scope to E_WARNING only, so unrelated PHP 8.5
+        // deprecations in the middleware stack don't mask the signal.
+        set_error_handler(function (int $severity, string $message): bool {
+            throw new \ErrorException($message, 0, $severity);
+        }, E_WARNING);
+
+        try {
+            [$body] = $this->listDiscussions();
+        } finally {
+            restore_error_handler();
+        }
+
+        // listDiscussions() already asserts a 200 — the regression is a 500.
+        // The excerpt for a textless post should simply be null/empty.
+        $attrs = $this->attributesById($body);
+        $this->assertArrayHasKey('1', $attrs, "Discussion 1 must serialize with $label content.");
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function textlessContentProvider(): array
+    {
+        return [
+            'empty string'      => ['empty string', ''],
+            'whitespace only'   => ['whitespace only', '   '],
+            'bare root'         => ['bare root', '<t></t>'],
+            'image only'        => ['image only', '<r><UPL-IMAGE-PREVIEW url="https://example.com/a.jpg">[img]</UPL-IMAGE-PREVIEW></r>'],
+        ];
+    }
 }
