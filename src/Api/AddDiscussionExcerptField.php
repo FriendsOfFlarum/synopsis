@@ -18,16 +18,22 @@ use Flarum\Discussion\Discussion;
 use Flarum\Post\CommentPost;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Flarum\Tags\Tag;
+use Psr\Http\Message\ServerRequestInterface;
 use s9e\TextFormatter\Utils;
 use WeakMap;
 
 class AddDiscussionExcerptField
 {
     /**
-     * Request-scoped excerpt configuration, keyed by API context so it is
-     * computed once per request rather than once per serialized discussion.
+     * Request-scoped excerpt configuration, computed once per request rather
+     * than once per serialized discussion.
      *
-     * @var WeakMap<Context, object>|null
+     * Keyed by the request, not the Context: the serializer hands each field
+     * of each resource its own clone of the Context (withField/withInclude),
+     * so a Context key misses for every discussion and re-runs the tags query
+     * per row. Every clone shares the same request.
+     *
+     * @var WeakMap<ServerRequestInterface, object>|null
      */
     private static ?WeakMap $config = null;
 
@@ -105,7 +111,7 @@ class AddDiscussionExcerptField
     {
         self::$config ??= new WeakMap();
 
-        return self::$config[$context] ??= self::compute();
+        return self::$config[$context->request] ??= self::compute();
     }
 
     private static function compute(): object
