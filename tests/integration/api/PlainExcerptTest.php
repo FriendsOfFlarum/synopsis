@@ -136,6 +136,26 @@ class PlainExcerptTest extends TestCase
     }
 
     #[Test]
+    public function excerpt_configuration_is_read_once_per_request(): void
+    {
+        $db = $this->database();
+        $db->enableQueryLog();
+        $db->flushQueryLog();
+
+        $response = $this->send($this->request('GET', '/api/discussions', ['authenticatedAs' => 2]));
+        $this->assertEquals(200, $response->getStatusCode());
+
+        $configQueries = array_filter(
+            array_column($db->getQueryLog(), 'query'),
+            fn (string $sql) => str_contains(str_replace(['`', '"'], '', $sql), 'select excerpt_length, rich_excerpts from')
+        );
+        $db->flushQueryLog();
+
+        // Two discussions on the page; the configuration must not be re-read for each.
+        $this->assertCount(1, $configQueries);
+    }
+
+    #[Test]
     public function rich_mode_keeps_including_full_posts(): void
     {
         // Rich excerpts render real HTML; that genuinely needs the rendered
