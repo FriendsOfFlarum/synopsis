@@ -88,7 +88,12 @@ class AddDiscussionExcerptField
                         // expensive. Still defend against a parse failure on
                         // malformed stored content.
                         try {
-                            $stripped = Utils::removeFormatting($content);
+                            // Images have no words: drop them whole, at any
+                            // depth, before flattening. Otherwise their text
+                            // survives — the URL itself for a BBCode
+                            // [IMG]https://…[/IMG], even wrapped in [CENTER] —
+                            // and leads the excerpt.
+                            $stripped = Utils::removeFormatting(Utils::removeTag($content, 'IMG'));
                         } catch (\Throwable $e) {
                             return null;
                         }
