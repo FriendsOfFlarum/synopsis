@@ -238,4 +238,39 @@ class PlainExcerptTest extends TestCase
             'image only'        => ['image only', '<r><UPL-IMAGE-PREVIEW url="https://example.com/a.jpg">[img]</UPL-IMAGE-PREVIEW></r>'],
         ];
     }
+
+    #[Test]
+    public function images_are_left_out_of_a_plain_excerpt()
+    {
+        $this->prepareDatabase([
+            Discussion::class => [
+                ['id' => 3, 'title' => 'BBCode image', 'created_at' => Carbon::now(), 'last_posted_at' => Carbon::now(), 'user_id' => 1, 'first_post_id' => 5, 'last_post_id' => 5, 'comment_count' => 1],
+                ['id' => 4, 'title' => 'Markdown image', 'created_at' => Carbon::now(), 'last_posted_at' => Carbon::now(), 'user_id' => 1, 'first_post_id' => 6, 'last_post_id' => 6, 'comment_count' => 1],
+                ['id' => 5, 'title' => 'fof/upload image preview', 'created_at' => Carbon::now(), 'last_posted_at' => Carbon::now(), 'user_id' => 1, 'first_post_id' => 7, 'last_post_id' => 7, 'comment_count' => 1],
+                ['id' => 6, 'title' => 'fof/upload image', 'created_at' => Carbon::now(), 'last_posted_at' => Carbon::now(), 'user_id' => 1, 'first_post_id' => 8, 'last_post_id' => 8, 'comment_count' => 1],
+            ],
+            Post::class => [
+                // [CENTER][IMG]https://example.com/logo.webp[/IMG][/CENTER] then a line of text, as BBCode stores it.
+                ['id' => 5, 'number' => 1, 'discussion_id' => 3, 'created_at' => Carbon::now(), 'user_id' => 1, 'type' => 'comment', 'content' => '<r><CENTER><s>[CENTER]</s><IMG src="https://example.com/logo.webp"><s>[IMG]</s>https://example.com/logo.webp<e>[/IMG]</e></IMG><e>[/CENTER]</e></CENTER>'."\n".'Flarum is distributed under the MIT license.</r>'],
+                ['id' => 6, 'number' => 1, 'discussion_id' => 4, 'created_at' => Carbon::now(), 'user_id' => 1, 'type' => 'comment', 'content' => '<r><p>Before <IMG alt="a picture" src="https://example.com/pic.png"><s>![</s>a picture<e>](https://example.com/pic.png)</e></IMG> after.</p></r>'],
+                // fof/upload's default image BBCode is self-closing, so its whole source is the tag's text.
+                ['id' => 7, 'number' => 1, 'discussion_id' => 5, 'created_at' => Carbon::now(), 'user_id' => 1, 'type' => 'comment', 'content' => '<r><UPL-IMAGE-PREVIEW alt="cat" url="https://example.com/a.png" uuid="abc">[upl-image-preview uuid=abc url=https://example.com/a.png alt=cat]</UPL-IMAGE-PREVIEW> Hello world</r>'],
+                ['id' => 8, 'number' => 1, 'discussion_id' => 6, 'created_at' => Carbon::now(), 'user_id' => 1, 'type' => 'comment', 'content' => '<r><UPL-IMAGE size="2kb" url="https://example.com/b.png" uuid="d"><s>[upl-image uuid=d size=2kb url=https://example.com/b.png]</s>b.png<e>[/upl-image]</e></UPL-IMAGE> Hello again</r>'],
+            ],
+            'discussion_tag' => [
+                ['discussion_id' => 3, 'tag_id' => 1],
+                ['discussion_id' => 4, 'tag_id' => 1],
+                ['discussion_id' => 5, 'tag_id' => 1],
+                ['discussion_id' => 6, 'tag_id' => 1],
+            ],
+        ]);
+
+        [$body] = $this->listDiscussions();
+        $excerpts = array_column(array_map(fn ($d) => ['id' => $d['id'], 'e' => $d['attributes']['synopsisExcerpt'] ?? null], $body['data']), 'e', 'id');
+
+        $this->assertSame('Flarum is distributed under the MIT license.', $excerpts['3']);
+        $this->assertSame('Before after.', $excerpts['4']);
+        $this->assertSame('Hello world', $excerpts['5']);
+        $this->assertSame('Hello again', $excerpts['6']);
+    }
 }
