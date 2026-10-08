@@ -23,6 +23,9 @@ use WeakMap;
 
 class AddDiscussionExcerptField
 {
+    /** Tags left out of plain excerpts: core's [img] and fof/upload's images. */
+    private const IMAGE_TAGS = ['IMG', 'UPL-IMAGE-PREVIEW', 'UPL-IMAGE'];
+
     /**
      * Request-scoped excerpt configuration, keyed by API context so it is
      * computed once per request rather than once per serialized discussion.
@@ -90,10 +93,18 @@ class AddDiscussionExcerptField
                         try {
                             // Images have no words: drop them whole, at any
                             // depth, before flattening. Otherwise their text
-                            // survives — the URL itself for a BBCode
-                            // [IMG]https://…[/IMG], even wrapped in [CENTER] —
-                            // and leads the excerpt.
-                            $stripped = Utils::removeFormatting(Utils::removeTag($content, 'IMG'));
+                            // survives and leads the excerpt: the URL itself
+                            // for [img]https://…[/img] (even inside [center]),
+                            // fof/upload's whole [upl-image-preview url=…]
+                            // BBCode (a self-closing tag keeps its source as
+                            // text), or [upl-image]'s file name.
+                            foreach (self::IMAGE_TAGS as $tag) {
+                                if (str_contains($content, '<'.$tag.' ')) {
+                                    $content = Utils::removeTag($content, $tag);
+                                }
+                            }
+
+                            $stripped = Utils::removeFormatting($content);
                         } catch (\Throwable $e) {
                             return null;
                         }
