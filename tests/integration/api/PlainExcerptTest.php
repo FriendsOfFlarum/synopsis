@@ -12,7 +12,11 @@
 namespace FoF\Synopsis\Tests\integration\api;
 
 use Carbon\Carbon;
+use Flarum\Api\Endpoint;
+use Flarum\Api\Resource\DiscussionResource;
+use Flarum\Api\Resource\EloquentBuffer;
 use Flarum\Discussion\Discussion;
+use Flarum\Extend;
 use Flarum\Post\Post;
 use Flarum\Tags\Tag;
 use Flarum\Testing\integration\RetrievesAuthorizedUsers;
@@ -153,6 +157,25 @@ class PlainExcerptTest extends TestCase
 
         // Two discussions on the page; the configuration must not be re-read for each.
         $this->assertCount(1, $configQueries);
+    }
+
+    #[Test]
+    public function an_already_loaded_excerpt_post_is_not_left_queued(): void
+    {
+        // Another extension eager-loads the first post, so there is nothing
+        // left for the excerpt to load.
+        $this->extend(
+            (new Extend\ApiResource(DiscussionResource::class))
+                ->endpoint('index', fn (Endpoint\Index $endpoint) => $endpoint->eagerLoad('firstPost'))
+        );
+
+        [$body] = $this->listDiscussions();
+
+        $this->assertSame('Opening words of the first discussion', $this->attributesById($body)['1']['synopsisExcerpt'] ?? null);
+
+        // Only load() empties the relationship buffer, so anything queued
+        // here would stay for the rest of the process.
+        $this->assertEmpty(EloquentBuffer::getBuffer(new Discussion(), 'firstPost'), 'Discussions with their first post already loaded must not stay queued.');
     }
 
     #[Test]

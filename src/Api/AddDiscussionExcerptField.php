@@ -54,7 +54,15 @@ class AddDiscussionExcerptField
                     // the endpoint instead would mark it loaded (null) where
                     // the constraint misses and break clients that include
                     // the relation explicitly.
-                    EloquentBuffer::add($discussion, $config->relation);
+                    //
+                    // A discussion whose post is already loaded (an include,
+                    // or another extension's eager load) has nothing to load,
+                    // so it must not be queued: only load() empties the
+                    // buffer, and it would stay there for the rest of the
+                    // process.
+                    if (!$discussion->relationLoaded($config->relation)) {
+                        EloquentBuffer::add($discussion, $config->relation);
+                    }
 
                     return function () use ($discussion, $config, $context) {
                         if (!$discussion->relationLoaded($config->relation)) {
