@@ -29,8 +29,8 @@
         }
     ],
     "require": {
-        "flarum/core": "^2.0.0-beta",
-        "flarum/tags": "^2.0.0-beta"
+        "flarum/core": "^2.0.0",
+        "flarum/tags": "^2.0.0"
     },
     "autoload": {
         "psr-4": {
@@ -41,6 +41,9 @@
         "ianm/synopsis": "*"
     },
     "extra": {
+        "branch-alias": {
+            "dev-2.x": "2.x-dev"
+        },
         "flarum-extension": {
             "title": "FoF Synopsis",
             "category": "feature",
@@ -76,8 +79,8 @@
         "analyse:phpstan": "Run static analysis"
     },
     "require-dev": {
-        "flarum/phpstan": "^2.0.0-beta",
-        "flarum/testing": "^2.0.0-beta",
+        "flarum/phpstan": "^2.0.0",
+        "flarum/testing": "^2.0.0",
         "symfony/var-dumper": "*"
     },
     "config": {
